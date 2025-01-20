@@ -1,32 +1,40 @@
+const express = require('express');
 const WebSocket = require('ws');
+const http = require('http');
 
-// Use the PORT environment variable or fallback to 8080 for local testing
+const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Create a WebSocket server
-const wss = new WebSocket.Server({ port: PORT });
+// Create HTTP server (without SSL)
+const server = http.createServer(app);
+
+const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws, req) => {
     const ip = req.socket.remoteAddress;
     console.log(`Client connected from ${ip}`);
 
-    // Handle messages from the client
     ws.on('message', (message) => {
         console.log(`Received: ${message}`);
-
-        // Send a response back to the client
         ws.send(`Server says: You sent "${message}"`);
     });
 
-    // Handle client disconnections
     ws.on('close', () => {
         console.log('Client disconnected');
     });
 
-    // Handle errors
     ws.on('error', (err) => {
         console.error('WebSocket error:', err);
     });
 });
 
-console.log(`WebSocket server is running and listening on port ${PORT}`);
+// Respond to the HTTP request from ESP32
+app.get('/', (req, res) => {
+    console.log("HTTP request received from ESP32");
+    res.status(200).send("WebSocket server is available");  // Respond with availability message
+});
+
+// Start the server
+server.listen(PORT, () => {
+    console.log(`WebSocket server is running on http://localhost:${PORT}`);
+});
