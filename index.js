@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 
 let fingerprintData = []; // Array to store multiple fingerprints
+let attendanceRecords = []; // Array to store attendance records
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -30,6 +32,10 @@ wss.on("connection", (ws, req) => {
     // Handle attendance response
     if (data.type === "attendance") {
       console.log("Attendance recorded:", data.fingerprint);
+      attendanceRecords.push({
+        fingerprint: data.fingerprint,
+        timestamp: new Date(),
+      }); // Store attendance record with timestamp
     }
   });
 
@@ -65,7 +71,7 @@ app.post("/register", (req, res) => {
   }
 });
 
-// REST API endpoint to get the fingerprint data
+// REST API endpoint to get all fingerprint data
 app.get("/data", (req, res) => {
   res.status(200).json({ fingerprints: fingerprintData });
 });
@@ -78,5 +84,23 @@ app.get("/data/:id", (req, res) => {
     res.status(200).json({ fingerprint });
   } else {
     res.status(404).json({ message: "Fingerprint not found" });
+  }
+});
+
+// REST API endpoint to get all attendance records
+app.get("/attendance", (req, res) => {
+  res.status(200).json({ attendance: attendanceRecords });
+});
+
+// REST API endpoint to get attendance records by fingerprint ID
+app.get("/attendance/:id", (req, res) => {
+  const id = req.params.id;
+  const filteredAttendance = attendanceRecords.filter(
+    (record) => record.fingerprint === id
+  );
+  if (filteredAttendance.length > 0) {
+    res.status(200).json({ attendance: filteredAttendance });
+  } else {
+    res.status(404).json({ message: "Attendance not found for this fingerprint" });
   }
 });
