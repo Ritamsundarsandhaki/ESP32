@@ -2,12 +2,12 @@ const WebSocket = require("ws");
 const express = require("express");
 const cors = require("cors");
 
-
-let fingerprintdata ="hi";
+let fingerprintData = []; // Array to store multiple fingerprints
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+
 // WebSocket server
 const wss = new WebSocket.Server({ noServer: true });
 
@@ -24,7 +24,12 @@ wss.on("connection", (ws, req) => {
     // Handle registration response
     if (data.type === "register_response") {
       console.log("Fingerprint data received:", data.fingerprint);
-      fingerprintdata=data.fingerprint
+      fingerprintData.push(data.fingerprint); // Store fingerprint data in an array
+    }
+
+    // Handle attendance response
+    if (data.type === "attendance") {
+      console.log("Attendance recorded:", data.fingerprint);
     }
   });
 
@@ -49,7 +54,7 @@ server.on("upgrade", (req, socket, head) => {
   });
 });
 
-// REST API endpoint
+// REST API endpoint to send register command to ESP32
 app.post("/register", (req, res) => {
   if (esp32Socket) {
     console.log("Sending register command to ESP32");
@@ -60,6 +65,18 @@ app.post("/register", (req, res) => {
   }
 });
 
-app.get('/data',(req,res)=>{
-    res.send(fingerprintdata)
-})
+// REST API endpoint to get the fingerprint data
+app.get("/data", (req, res) => {
+  res.status(200).json({ fingerprints: fingerprintData });
+});
+
+// REST API endpoint to get a specific fingerprint by ID
+app.get("/data/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const fingerprint = fingerprintData[id - 1]; // Assuming ID is 1-indexed
+  if (fingerprint) {
+    res.status(200).json({ fingerprint });
+  } else {
+    res.status(404).json({ message: "Fingerprint not found" });
+  }
+});
