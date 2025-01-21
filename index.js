@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 
 
-
+let fingerprintdata ="hi";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -24,7 +24,7 @@ wss.on("connection", (ws, req) => {
     // Handle registration response
     if (data.type === "register_response") {
       console.log("Fingerprint data received:", data.fingerprint);
-      // You can save the fingerprint data to the database here
+      fingerprintdata=data.fingerprint
     }
   });
 
@@ -59,3 +59,7 @@ app.post("/register", (req, res) => {
     res.status(500).json({ message: "ESP32 not connected" });
   }
 });
+
+app.get('/data',(req,res)=>{
+    res.send(fingerprintdata)
+})
