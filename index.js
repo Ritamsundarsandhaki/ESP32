@@ -2,12 +2,14 @@ const WebSocket = require("ws");
 const express = require("express");
 const cors = require("cors");
 
-
+let fingerprintData = []; // Array to store multiple fingerprints
+let attendanceRecords = []; // Array to store attendance records
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+
 // WebSocket server
 const wss = new WebSocket.Server({ noServer: true });
 
@@ -24,7 +26,16 @@ wss.on("connection", (ws, req) => {
     // Handle registration response
     if (data.type === "register_response") {
       console.log("Fingerprint data received:", data.fingerprint);
-      // You can save the fingerprint data to the database here
+      fingerprintData.push(data.fingerprint); // Store fingerprint data in an array
+    }
+
+    // Handle attendance response
+    if (data.type === "attendance") {
+      console.log("Attendance recorded:", data.fingerprint);
+      attendanceRecords.push({
+        fingerprint: data.fingerprint,
+        timestamp: new Date(),
+      }); // Store attendance record with timestamp
     }
   });
 
@@ -49,7 +60,7 @@ server.on("upgrade", (req, socket, head) => {
   });
 });
 
-// REST API endpoint
+// REST API endpoint to send register command to ESP32
 app.post("/register", (req, res) => {
   if (esp32Socket) {
     console.log("Sending register command to ESP32");
@@ -57,5 +68,39 @@ app.post("/register", (req, res) => {
     res.status(200).json({ message: "Register command sent to ESP32" });
   } else {
     res.status(500).json({ message: "ESP32 not connected" });
+  }
+});
+
+// REST API endpoint to get all fingerprint data
+app.get("/data", (req, res) => {
+  res.status(200).json({ fingerprints: fingerprintData });
+});
+
+// REST API endpoint to get a specific fingerprint by ID
+app.get("/data/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const fingerprint = fingerprintData[id - 1]; // Assuming ID is 1-indexed
+  if (fingerprint) {
+    res.status(200).json({ fingerprint });
+  } else {
+    res.status(404).json({ message: "Fingerprint not found" });
+  }
+});
+
+// REST API endpoint to get all attendance records
+app.get("/attendance", (req, res) => {
+  res.status(200).json({ attendance: attendanceRecords });
+});
+
+// REST API endpoint to get attendance records by fingerprint ID
+app.get("/attendance/:id", (req, res) => {
+  const id = req.params.id;
+  const filteredAttendance = attendanceRecords.filter(
+    (record) => record.fingerprint === id
+  );
+  if (filteredAttendance.length > 0) {
+    res.status(200).json({ attendance: filteredAttendance });
+  } else {
+    res.status(404).json({ message: "Attendance not found for this fingerprint" });
   }
 });
